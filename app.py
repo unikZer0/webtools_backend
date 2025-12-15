@@ -17,6 +17,11 @@ OUTPUT_DIR = "outputs"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+#test
+@app.get("/")
+def root():
+    return {"status": "ok", "message": "Backend is running"}
+
 @app.post("/video-to-frames-zip")
 async def video_to_frames_zip(file: UploadFile = File(...)):
     uid = str(uuid.uuid4())
