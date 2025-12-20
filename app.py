@@ -44,9 +44,57 @@ async def video_to_frames_zip(file: UploadFile = File(...)):
                 arcname=img
             )
 
-    # 4. expose zip to user (DOWNLOAD)
+    )
+
+@app.post("/convert-image")
+async def convert_image_endpoint(files: list[UploadFile] = File(...)):
+    from service.image_service import convert_image
+    
+    uid = str(uuid.uuid4())
+    session_dir = f"{OUTPUT_DIR}/{uid}_image_conversion"
+    os.makedirs(session_dir, exist_ok=True)
+    
+    converted_files = []
+    
+    for file in files:
+        # Save original
+        temp_input_path = f"{session_dir}/input_{file.filename}"
+        with open(temp_input_path, "wb") as f:
+            f.write(await file.read())
+            
+        # Determine output name
+        base_name = os.path.splitext(file.filename)[0]
+        output_filename = f"{base_name}.png"
+        output_path = f"{session_dir}/{output_filename}"
+        
+        # Convert
+        success, error = convert_image(temp_input_path, output_path)
+        if success:
+            converted_files.append(output_filename)
+            
+            # Remove input file to save space? Optional. 
+            # os.remove(temp_input_path) 
+    
+    # If 1 file, return that file directly? 
+    # Or always return ZIP for consistency if multiple possible? 
+    # The requirement says "input_folder", "output_folder", implying batch. 
+    # Let's return a ZIP if > 1, or just always ZIP for simplicity in frontend handling?
+    # Actually, user might want to preview it.
+    # Let's ZIP if > 0.
+    
+    if not converted_files:
+        return {"error": "No files converted successfully"}
+
+    zip_path = f"{OUTPUT_DIR}/{uid}_images.zip"
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for filename in converted_files:
+            zipf.write(
+                os.path.join(session_dir, filename),
+                arcname=filename
+            )
+            
     return FileResponse(
         zip_path,
         media_type="application/zip",
-        filename="frames.zip"
+        filename="converted_images.zip"
     )
