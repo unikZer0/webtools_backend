@@ -3,6 +3,9 @@ from fastapi.responses import FileResponse
 import os, zipfile, uuid
 from service.video_service import extract_frames
 from fastapi.middleware.cors import CORSMiddleware
+from apscheduler.schedulers.background import BackgroundScheduler
+import shutil
+import time
 
 app = FastAPI()
 app.add_middleware(
@@ -16,6 +19,34 @@ OUTPUT_DIR = "outputs"
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+def cleanup_files():
+    """Delete files in UPLOAD_DIR and OUTPUT_DIR older than 5 minutes."""
+    cutoff_time = time.time() - (5 * 60)  # 5 minutes ago
+    
+    folders = [UPLOAD_DIR, OUTPUT_DIR]
+    
+    for folder in folders:
+        if not os.path.exists(folder):
+            continue
+            
+        for filename in os.listdir(folder):
+            file_path = os.path.join(folder, filename)
+            try:
+                # Check modification time
+                if os.path.getmtime(file_path) < cutoff_time:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                    print(f"Deleted old file/directory: {file_path}")
+            except Exception as e:
+                print(f"Error deleting {file_path}: {e}")
+
+# Start Scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(cleanup_files, 'interval', minutes=1)
+scheduler.start()
 
 #test
 @app.get("/")
