@@ -74,9 +74,6 @@ async def video_to_frames_zip(file: UploadFile = File(...)):
                 os.path.join(frames_dir, img),
                 arcname=img
             )
-
-    )
-
 @app.post("/convert-image")
 async def convert_image_endpoint(files: list[UploadFile] = File(...)):
     from service.image_service import convert_image
